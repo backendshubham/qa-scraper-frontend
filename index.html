@@ -47,83 +47,101 @@
     <div id="qaContainer" class="mt-8 w-full max-w-2xl flex flex-col gap-4"></div>
   </div>
 
-  <script>
-    const btn = document.getElementById('generateBtn');
-    const loader = document.getElementById('loader');
-    const toast = document.getElementById('toast');
-    const qaContainer = document.getElementById('qaContainer');
-    const roleInput = document.getElementById('role');
+<script>
+  const btn = document.getElementById('generateBtn');
+  const loader = document.getElementById('loader');
+  const toast = document.getElementById('toast');
+  const qaContainer = document.getElementById('qaContainer');
+  const roleInput = document.getElementById('role');
 
-    btn.addEventListener('click', async () => {
-      let role = roleInput.value.trim().toLowerCase().replace(/\s+/g, '-');
+  btn.addEventListener('click', async () => {
+    let role = roleInput.value.trim().toLowerCase().replace(/\s+/g, '-');
 
-      if (!role) {
-        showToast('Please enter a role name!', true);
+    if (!role) {
+      showToast('Please enter a role name!', true);
+      return;
+    }
+
+    loader.classList.remove('hidden');
+    qaContainer.innerHTML = '';
+
+    try {
+      const res = await fetch(`https://qa-scraper.onrender.com/scrape/${role}`);
+      const data = await res.json();
+
+      if (!res.ok) {
+        // Handle various backend error statuses
+        if (res.status === 400) {
+          showToast(data.error || 'Bad request. Please check your input.', true);
+        } else if (res.status === 404) {
+          showToast(data.error || 'No questions found for this role.', true);
+        } else if (res.status === 500) {
+          showToast(data.error || 'Server error. Please try again later.', true);
+        } else {
+          showToast(data.error || 'An unexpected error occurred.', true);
+        }
         return;
       }
 
-      loader.classList.remove('hidden');
-      qaContainer.innerHTML = '';
-
-      try {
-        const res = await fetch(`http://192.168.1.3:3000/scrape/${role}`);
-        const data = await res.json();
-
-        if (data.error) {
-          showToast(`Error: ${data.error}`, true);
-        } else {
-          showToast('Questions loaded successfully!');
-          data.data.forEach((item, index) => {
-            const card = createQACard(item.question, item.answer, index + 1);
-            qaContainer.appendChild(card);
-          });
-
-          // Scroll to top after loading
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-      } catch (error) {
-        showToast(`Fetch error: ${error.message}`, true);
-      } finally {
-        loader.classList.add('hidden');
+      if (data.data.length === 0) {
+        showToast('No questions found for this role.', true);
+        return;
       }
-    });
 
-    function createQACard(question, answer, number) {
-      const card = document.createElement('div');
-      card.className = "bg-neutral-800 text-white p-4 rounded-lg border border-yellow-400 shadow transition";
+      showToast('Questions loaded successfully!');
+      data.data.forEach((item, index) => {
+        const card = createQACard(item.question, item.answer, index + 1);
+        qaContainer.appendChild(card);
+      });
 
-      const heading = document.createElement('h2');
-      heading.className = "text-yellow-400 font-bold mb-2";
-      heading.textContent = `${number}. Question:`;
+      // Scroll to top after loading
+      window.scrollTo({ top: 0, behavior: 'smooth' });
 
-      const questionText = document.createElement('p');
-      questionText.className = "mb-3";
-      questionText.textContent = question;
-
-      const answerHeading = document.createElement('h3');
-      answerHeading.className = "text-yellow-400 font-bold mb-1";
-      answerHeading.textContent = "Answer:";
-
-      const answerText = document.createElement('p');
-      answerText.textContent = answer;
-
-      card.appendChild(heading);
-      card.appendChild(questionText);
-      card.appendChild(answerHeading);
-      card.appendChild(answerText);
-
-      return card;
+    } catch (error) {
+      console.error('Fetch error:', error);
+      showToast('Failed to connect to server. Please try again.', true);
+    } finally {
+      loader.classList.add('hidden');
     }
+  });
 
-    function showToast(message, isError = false) {
-      toast.textContent = message;
-      toast.className = `fixed bottom-5 right-5 px-4 py-2 rounded ${isError ? 'bg-red-600' : 'bg-green-600'} text-white`;
-      toast.classList.remove('hidden');
+  function createQACard(question, answer, number) {
+    const card = document.createElement('div');
+    card.className = "bg-neutral-800 text-white p-4 rounded-lg border border-yellow-400 shadow transition";
 
-      setTimeout(() => {
-        toast.classList.add('hidden');
-      }, 3000);
-    }
-  </script>
+    const heading = document.createElement('h2');
+    heading.className = "text-yellow-400 font-bold mb-2";
+    heading.textContent = `${number}. Question:`;
+
+    const questionText = document.createElement('p');
+    questionText.className = "mb-3";
+    questionText.textContent = question;
+
+    const answerHeading = document.createElement('h3');
+    answerHeading.className = "text-yellow-400 font-bold mb-1";
+    answerHeading.textContent = "Answer:";
+
+    const answerText = document.createElement('p');
+    answerText.textContent = answer;
+
+    card.appendChild(heading);
+    card.appendChild(questionText);
+    card.appendChild(answerHeading);
+    card.appendChild(answerText);
+
+    return card;
+  }
+
+  function showToast(message, isError = false) {
+    toast.textContent = message;
+    toast.className = `fixed bottom-5 right-5 px-4 py-2 rounded ${isError ? 'bg-red-600' : 'bg-green-600'} text-white`;
+    toast.classList.remove('hidden');
+
+    setTimeout(() => {
+      toast.classList.add('hidden');
+    }, 3000);
+  }
+</script>
+
 </body>
 </html>
